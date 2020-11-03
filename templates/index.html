@@ -120,10 +120,13 @@
         <script>
             let configJson = window.localStorage.getItem('config');
             let config;
-            let state = 'stop';
+            let state = 'Pomodoro';
+            let timer_period;
+            let timer_elapsed;
+            let timer_obj;
             if (configJson == null) {
                 config = {
-                    'state': 'Pomodoro',
+                    {#'state': 'Pomodoro',#}
                     'focus': 25,
                     'break': 5,
                     'longBreak': 15,
@@ -140,7 +143,7 @@
             });
 
             function init() {
-                $('#state').text(config.state);
+                $('#state').text(state);
                 $('#remain-time').text(`${config.focus}:00`);
                 $('#elapsed-time').text('00:00');
             }
@@ -168,19 +171,63 @@
             }
 
             function action() {
-                if (state === 'stop') {
+                if (state === 'Pomodoro') {
                     // start pomodoro
                     $('#state-desc').text('stop');
-                    state = 'running';
                 } else if (state === 'running') {
                     // stop pomodoro
                     $('#state-desc').text('start');
-                    state = 'stop';
                 } else if (state === 'break') {
                     // start pomodoro again
                     $('#state-desc').text('stop');
-                    state = 'running';
                 }
+                startTimer();
+            }
+
+            function startTimer() {
+                timer_elapsed = 0;
+                if (state == 'Pomodoro') {
+                    // pomodoro timer
+                    timer_period = parseInt(config.focus) * 60; // to seconds
+                } else if (state == 'Break') {
+                    // break timer
+                    timer_period = parseInt(config.break) * 60;
+                } else if (state == 'Long Break') {
+                    // long break timer
+                    timer_period = parseInt(config.longBreak) * 60;
+                }
+
+                timer_obj = setInterval(function() {
+
+                    timer_elapsed += 1;
+
+                    let delta = timer_period - timer_elapsed;
+
+                    if (delta < 0) {
+                        $('#remain-time').text('00:00');
+                    } else {
+                        let remain_minutes = Math.floor(delta / 60);
+                        let remain_seconds = delta - remain_minutes * 60;
+
+                        let rm_str = remain_minutes.toString().padStart(2, '0');
+                        let rs_str = remain_seconds.toString().padStart(2, '0');
+
+                        $('#remain-time').text(`${rm_str}:${rs_str}`);
+                    }
+
+                    let elapsed_minutes = Math.floor(timer_elapsed / 60);
+                    let elapsed_seconds = timer_elapsed - elapsed_minutes * 60;
+
+                    let em_str = elapsed_minutes.toString().padStart(2, '0');
+                    let es_str = elapsed_seconds.toString().padStart(2, '0');
+
+                    $('#elapsed-time').text(`${em_str}:${es_str}`);
+
+                    // TODO browser notify when elapsed time reaches period time
+                    if (timer_elapsed === timer_period) {
+                        console.log('Ring!')
+                    }
+                }, 1000);
             }
 
             function openSettings() {
@@ -199,7 +246,7 @@
                 let dayVal = $('#setDay').val();
                 let cycleVal = $('#setCycle').val();
                 config = {
-                    'state': config.state,
+                    {#'state': config.state,#}
                     'focus': focusVal,
                     'break': breakVal,
                     'longBreak': longBreakVal,
