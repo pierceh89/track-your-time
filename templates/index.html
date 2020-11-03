@@ -1,91 +1,223 @@
 <!DOCTYPE html>
-<html>
+<html lang="ko">
     <head>
+        <!-- Required meta tags -->
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
         <title>Track Your Time</title>
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.5.3/dist/css/bootstrap.min.css"
               integrity="sha384-TX8t27EcRE3e/ihU7zmQxVncDAy5uIKz4rEkgIXeMed4M0jlfIDPvg6uqKI2xXr2"
               crossorigin="anonymous">
-        <style>
-            .center {
-                margin-left: auto;
-                margin-right: auto;
-            }
-            .box {
-                margin-top: 25px;
-
-                width: 500px;
-                height: 500px;
-
-                border: solid #30799B;
-                border-radius: 9px;
-
-                background-color: #30799B;
-            }
-            .header {
-                padding: 5px;
-                height: 40px;
-            }
-            #title {
-                height: 100px;
-            }
-            #remain {
-                height: 150px;
-            }
-            #elapsed {
-                height: 130px;
-            }
-            .footer {
-                height: 80px;
-            }
-        </style>
-
     </head>
     <body>
-        <div class="box center" id="pomodoro">
-            <div class="header d-flex justify-content-between">
-                <a href="#" onclick="">
-                    <img src="{{url_for('static', filename='bar-chart.svg')}}" alt="report" width="32" height="32" />
-                </a>
-                <a href="#" onclick="toggleSettings()">
-                    <img src="{{url_for('static', filename='gear.svg')}}" alt="settings" width="32" height="32"/>
-                </a>
+        <nav class="navbar navbar-expand navbar-light bg-light">
+            <a class="navbar-brand" href="#">
+                <img src="{{url_for('static', filename='stopwatch.svg')}}" alt="brand" width="32" height="32"/>
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent"
+                    aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse">
+                <ul class="navbar-nav mr-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">Pomodoro</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" onclick="toggleReport()">
+                            Statistics
+<!--                            <img src="{{url_for('static', filename='bar-chart.svg')}}" alt="report" width="32" height="32"/>-->
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" onclick="openSettings()">
+                            Settings
+<!--                            <img src="{{url_for('static', filename='gear.svg')}}" alt="settings" width="32" height="32"/>-->
+                        </a>
+                    </li>
+                </ul>
             </div>
-            <div id="title">
-                title
+        </nav>
+        <div class="container">
+            <div class="row justify-content-center" style="display: none;" id="report">
+                <div class="col-12 col-md-6">
+                    <canvas id="myChart"></canvas>
+                </div>
             </div>
-            <div id="remain">
-                remain time
+            <div class="row justify-content-center mt-4 mb-2">
+                <div class="col-12 col-md-6" id="title">
+                    <h1 class="text-center" id="state">
+                        title
+                    </h1>
+                </div>
             </div>
-            <div id="elapsed">
-                elapsed time
+            <div class="row justify-content-center mb-2">
+                <div class="col-12 col-md-6" id="remain">
+                    <h1 class="text-center" id="remain-time">
+                        remain time
+                    </h1>
+                </div>
             </div>
-            <div class="footer">
-                <button class="btn btn-success btn-lg">
-                    Control
-                </button>
+            <div class="row justify-content-center mb-2">
+                <div class="col-12 col-md-6" id="elapsed">
+                    <h2 class="text-center" id="elapsed-time">
+                        elapsed time
+                    </h2>
+                </div>
+            </div>
+            <div class="row justify-content-center">
+                <div class="col-12 col-md-6 text-center">
+                    <button class="btn btn-success btn-lg" onclick="action()" id="state-desc">
+                        start
+                    </button>
+                </div>
             </div>
         </div>
-        <div class="box center invisible" id="settings">
-            settings
-        </div>
-        <div class="container-fluid" id="report">
-            report
+        <div class="modal fade" id="settingsModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Settings</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label for="setFocus">Focus</label>
+                            <input type="number" class="form-control" id="setFocus" />
+                        </div>
+                        <div class="form-group">
+                            <label for="setBreak">Break</label>
+                            <input type="number" class="form-control" id="setBreak" />
+                        </div>
+                        <div class="form-group">
+                            <label for="setLongBreak">LongBreak</label>
+                            <input type="number" class="form-control" id="setLongBreak" />
+                        </div>
+                        <div class="form-group">
+                            <label for="setDay">Goal per Day</label>
+                            <input type="number" class="form-control" id="setDay" />
+                        </div>
+                        <div class="form-group">
+                            <label for="setCycle">Cycle</label>
+                            <input type="number" class="form-control" id="setCycle" />
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                        <button type="button" class="btn btn-primary" onclick="applySettings()">Save changes</button>
+                    </div>
+                </div>
+            </div>
         </div>
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.3/dist/js/bootstrap.bundle.min.js"
                 integrity="sha384-ho+j7jyWK8fNQe+A12Hb8AhRq26LrZ/JpcUGGOn+Y7RsweNrtN/tE3MoK7ZeZDyx"
                 crossorigin="anonymous"></script>
+        <script src="https://cdn.jsdelivr.net/npm/chart.js@2.8.0"></script>
         <script>
-            let openSettings = false
-            function toggleSettings() {
-                let settings = $('#settings')
-                openSettings = !openSettings
-                if (openSettings) {
-                    settings.removeClass('invisible')
-                    settings.addClass('visible')
+            let configJson = window.localStorage.getItem('config');
+            let config;
+            let state = 'stop';
+            if (configJson == null) {
+                config = {
+                    'state': 'Pomodoro',
+                    'focus': 25,
+                    'break': 5,
+                    'longBreak': 15,
+                    'day': 10,
+                    'cycle': 4
+                };
+                window.localStorage.setItem('config', JSON.stringify(config));
+            } else {
+                config = JSON.parse(configJson);
+            }
+
+            $(document).ready(function () {
+                init();
+            });
+
+            function init() {
+                $('#state').text(config.state);
+                $('#remain-time').text(`${config.focus}:00`);
+                $('#elapsed-time').text('00:00');
+            }
+
+            function initChart() {
+                let ctx = document.getElementById('myChart').getContext('2d');
+                let chart = new Chart(ctx, {
+                    // The type of chart we want to create
+                    type: 'line',
+
+                    // The data for our dataset
+                    data: {
+                        labels: ['January', 'February', 'March', 'April', 'May', 'June', 'July'],
+                        datasets: [{
+                            label: 'My First dataset',
+                            backgroundColor: 'rgb(255, 99, 132)',
+                            borderColor: 'rgb(255, 99, 132)',
+                            data: [0, 10, 5, 2, 20, 30, 45]
+                        }]
+                    },
+
+                    // Configuration options go here
+                    options: {}
+                });
+            }
+
+            function action() {
+                if (state === 'stop') {
+                    // start pomodoro
+                    $('#state-desc').text('stop');
+                    state = 'running';
+                } else if (state === 'running') {
+                    // stop pomodoro
+                    $('#state-desc').text('start');
+                    state = 'stop';
+                } else if (state === 'break') {
+                    // start pomodoro again
+                    $('#state-desc').text('stop');
+                    state = 'running';
+                }
+            }
+
+            function openSettings() {
+                $('#setFocus').val(config.focus);
+                $('#setBreak').val(config.break);
+                $('#setLongBreak').val(config.longBreak);
+                $('#setDay').val(config.day);
+                $('#setCycle').val(config.cycle);
+                $('#settingsModal').modal('show');
+            }
+
+            function applySettings() {
+                let focusVal = $('#setFocus').val();
+                let breakVal = $('#setBreak').val();
+                let longBreakVal = $('#setLongBreak').val();
+                let dayVal = $('#setDay').val();
+                let cycleVal = $('#setCycle').val();
+                config = {
+                    'state': config.state,
+                    'focus': focusVal,
+                    'break': breakVal,
+                    'longBreak': longBreakVal,
+                    'day': dayVal,
+                    'cycle': cycleVal
+                };
+                window.localStorage.setItem('config', JSON.stringify(config));
+                init();
+                $('#settingsModal').modal('hide');
+            }
+
+            function toggleReport() {
+                let report = $('#report');
+                if (report.css('display') === 'flex') {
+                    report.hide();
                 } else {
-                    settings.removeClass('visible')
-                    settings.addClass('invisible')
+                    initChart();
+                    report.show();
                 }
             }
         </script>
