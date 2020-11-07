@@ -9,6 +9,12 @@
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.5.3/dist/css/bootstrap.min.css"
               integrity="sha384-TX8t27EcRE3e/ihU7zmQxVncDAy5uIKz4rEkgIXeMed4M0jlfIDPvg6uqKI2xXr2"
               crossorigin="anonymous">
+        <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+        <style>
+            * {
+                font-family: 'Jua', sans-serif;
+            }
+        </style>
     </head>
     <body>
         <nav class="navbar navbar-expand navbar-light bg-light">
@@ -27,13 +33,11 @@
                     <li class="nav-item">
                         <a class="nav-link" href="#" onclick="toggleReport()">
                             Statistics
-<!--                            <img src="{{url_for('static', filename='bar-chart.svg')}}" alt="report" width="32" height="32"/>-->
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="#" onclick="openSettings()">
                             Settings
-<!--                            <img src="{{url_for('static', filename='gear.svg')}}" alt="settings" width="32" height="32"/>-->
                         </a>
                     </li>
                 </ul>
@@ -55,21 +59,30 @@
             <div class="row justify-content-center mb-2">
                 <div class="col-12 col-md-6" id="remain">
                     <h1 class="text-center" id="remain-time">
-                        remain time
+                        남은 시간
                     </h1>
                 </div>
             </div>
             <div class="row justify-content-center mb-2">
                 <div class="col-12 col-md-6" id="elapsed">
                     <h2 class="text-center" id="elapsed-time">
-                        elapsed time
+                        지난 시간
                     </h2>
                 </div>
             </div>
+            <div class="row justify-content-center mb-2">
+                <div class="col-12 col-md-6">
+                    <div class="progress">
+                        <div class="progress-bar" id="timer-progress" role="progressboar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                    </div>
+                </div>
+            </div>
             <div class="row justify-content-center">
-                <div class="col-12 col-md-6 text-center">
+                <div class="col-12 col-md-6 text-center" id="control-box">
                     <button class="btn btn-success btn-lg" onclick="action()" id="state-desc">
                         start
+                    </button>
+                    <button class="btn btn-light btn-lg" id="work-desc" style="display: none;">
                     </button>
                 </div>
             </div>
@@ -120,13 +133,13 @@
         <script>
             let configJson = window.localStorage.getItem('config');
             let config;
-            let state = 'Pomodoro';
-            let timer_period;
-            let timer_elapsed;
-            let timer_obj;
+            let pomoState = 'Pomodoro';
+            let timerState = 'stop';
+            let timerPeriod;
+            let timerElapsed;
+            let timerObj;
             if (configJson == null) {
                 config = {
-                    {#'state': 'Pomodoro',#}
                     'focus': 25,
                     'break': 5,
                     'longBreak': 15,
@@ -143,7 +156,7 @@
             });
 
             function init() {
-                $('#state').text(state);
+                $('#state').text(pomoState);
                 $('#remain-time').text(`${config.focus}:00`);
                 $('#elapsed-time').text('00:00');
             }
@@ -170,38 +183,53 @@
                 });
             }
 
-            function action() {
-                if (state === 'Pomodoro') {
+            function action(act) {
+                if (timerState === 'stop') {
                     // start pomodoro
                     $('#state-desc').text('stop');
-                } else if (state === 'running') {
+                    timerState = 'running';
+                    startTimer();
+                } else if (timerState === 'running') {
                     // stop pomodoro
                     $('#state-desc').text('start');
-                } else if (state === 'break') {
-                    // start pomodoro again
-                    $('#state-desc').text('stop');
+                    timerState = 'stop';
+                    stopTimer();
+                } else if (timerState === 'finished' && act === 'relax') {
+                    pomoState = 'Break';
+                    // TODO add long break
+                    stopTimer();
+                    startTimer();
+                    timerState = 'running';
+                } else if (timerState === 'finished' && act === 'resume') {
+                    pomoState = 'Pomodoro';
+                    stopTimer();
+                    startTimer();
+                    timerState = 'running';
+                } else if (timerState === 'finished') {
+                    $('#state-desc').text('start');
+                    timerState = 'stop';
+                    stopTimer();
                 }
-                startTimer();
             }
 
             function startTimer() {
-                timer_elapsed = 0;
-                if (state == 'Pomodoro') {
+                timerElapsed = 0;
+                if (pomoState === 'Pomodoro') {
                     // pomodoro timer
-                    timer_period = parseInt(config.focus) * 60; // to seconds
-                } else if (state == 'Break') {
+                    timerPeriod = parseInt(config.focus) * 60; // to seconds
+                } else if (pomoState === 'Break') {
                     // break timer
-                    timer_period = parseInt(config.break) * 60;
-                } else if (state == 'Long Break') {
+                    timerPeriod = parseInt(config.break) * 60;
+                } else if (pomoState === 'Long Break') {
                     // long break timer
-                    timer_period = parseInt(config.longBreak) * 60;
+                    timerPeriod = parseInt(config.longBreak) * 60;
                 }
 
-                timer_obj = setInterval(function() {
+                timerObj = setInterval(function() {
 
-                    timer_elapsed += 1;
+                    timerElapsed += 1;
 
-                    let delta = timer_period - timer_elapsed;
+                    let delta = timerPeriod - timerElapsed;
 
                     if (delta < 0) {
                         $('#remain-time').text('00:00');
@@ -215,19 +243,49 @@
                         $('#remain-time').text(`${rm_str}:${rs_str}`);
                     }
 
-                    let elapsed_minutes = Math.floor(timer_elapsed / 60);
-                    let elapsed_seconds = timer_elapsed - elapsed_minutes * 60;
+                    let elapsed_minutes = Math.floor(timerElapsed / 60);
+                    let elapsed_seconds = timerElapsed - elapsed_minutes * 60;
 
                     let em_str = elapsed_minutes.toString().padStart(2, '0');
                     let es_str = elapsed_seconds.toString().padStart(2, '0');
 
                     $('#elapsed-time').text(`${em_str}:${es_str}`);
 
+                    if (timerElapsed < timerPeriod) {
+                        let elapsed_percent = timerElapsed/timerPeriod * 100;
+                        $('#timer-progress').css('width', `${elapsed_percent}%`);
+                    }
+
                     // TODO browser notify when elapsed time reaches period time
-                    if (timer_elapsed === timer_period) {
-                        console.log('Ring!')
+                    if (timerElapsed === timerPeriod) {
+                        console.log('Ring!');
+                        timerRingAction();
                     }
                 }, 1000);
+            }
+
+            function timerRingAction() {
+                console.log(pomoState, timerState);
+                let workDesc = $('#work-desc');
+                if (pomoState === 'Pomodoro') {
+                    workDesc.text('Relax');
+                    workDesc.attr('onclick', 'action("relax")');
+                } else {
+                    workDesc.text('Resume');
+                    workDesc.attr('onclick', 'action("resume")');
+                }
+                timerState = 'finished';
+                workDesc.show();
+            }
+
+            function stopTimer() {
+                clearInterval(timerObj);
+                if (pomoState === 'Pomodoro') {
+                    $('#elapsed-time').text('00:00');
+                    $('#remain-time').text(`${config.focus}:00`);
+                    $('#timer-progress').css('width', '0%');
+                }
+                $('#work-desc').hide();
             }
 
             function openSettings() {
@@ -246,7 +304,6 @@
                 let dayVal = $('#setDay').val();
                 let cycleVal = $('#setCycle').val();
                 config = {
-                    {#'state': config.state,#}
                     'focus': focusVal,
                     'break': breakVal,
                     'longBreak': longBreakVal,
@@ -267,6 +324,7 @@
                     report.show();
                 }
             }
+
         </script>
     </body>
 </html>
