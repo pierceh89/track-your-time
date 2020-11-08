@@ -31,12 +31,12 @@
                         <a class="nav-link" href="#">Pomodoro</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="#" onclick="toggleReport()">
+                        <a class="nav-link" href="#" onclick="_toggleReport()">
                             Statistics
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="#" onclick="openSettings()">
+                        <a class="nav-link" href="#" onclick="_openSettings()">
                             Settings
                         </a>
                     </li>
@@ -79,10 +79,10 @@
             </div>
             <div class="row justify-content-center">
                 <div class="col-12 col-md-6 text-center" id="control-box">
-                    <button class="btn btn-success btn-lg" onclick="action()" id="state-desc">
+                    <button class="btn btn-success btn-lg" onclick="_action('start')" id="actionBtn">
                         start
                     </button>
-                    <button class="btn btn-light btn-lg" id="work-desc" style="display: none;">
+                    <button class="btn btn-light btn-lg" id="resumeBtn" style="display: none;">
                     </button>
                 </div>
             </div>
@@ -131,10 +131,24 @@
                 crossorigin="anonymous"></script>
         <script src="https://cdn.jsdelivr.net/npm/chart.js@2.8.0"></script>
         <script>
+            // pomodoroState
+            const POMODORO = 'pomodoro';
+            const BREAK = 'break';
+            const LONG_BREAK = 'long break';
+            // timerState
+            const TIMER_ON = 'running';
+            const TIMER_OFF = 'stop';
+            // action
+            const ACTION_START = 'start';
+            const ACTION_STOP = 'stop';
+            const ACTION_RESUME = 'resume';
+
             let configJson = window.localStorage.getItem('config');
             let config;
-            let pomoState = 'Pomodoro';
-            let timerState = 'stop';
+            let pomodoroState = POMODORO;
+            let timerState = TIMER_OFF;
+
+            let pomodoroCount = 0;
             let timerPeriod;
             let timerElapsed;
             let timerObj;
@@ -155,10 +169,14 @@
                 init();
             });
 
+            // pomodoro 초기화
+            // localStorage 에서 설정값 로드
             function init() {
-                $('#state').text(pomoState);
+                $('#state').text(pomodoroState);
                 $('#remain-time').text(`${config.focus}:00`);
                 $('#elapsed-time').text('00:00');
+
+                // TODO 오늘의 pomodoroCount 를 로딩할 때 가져와야 한다.
             }
 
             function initChart() {
@@ -181,6 +199,16 @@
                     // Configuration options go here
                     options: {}
                 });
+            }
+
+            function updatePomodoroState(stateTo) {
+                console.log('Pomodoro state from ' + pomodoroState + ' to ' + stateTo);
+                pomodoroState = stateTo;
+            }
+
+            function updateTimerState(stateTo) {
+                console.log('Timer state from ' + timerState + ' to ' + stateTo);
+                timerState = stateTo;
             }
 
             function action(act) {
@@ -214,13 +242,13 @@
 
             function startTimer() {
                 timerElapsed = 0;
-                if (pomoState === 'Pomodoro') {
+                if (pomodoroState === POMODORO) {
                     // pomodoro timer
                     timerPeriod = parseInt(config.focus) * 60; // to seconds
-                } else if (pomoState === 'Break') {
+                } else if (pomodoroState === BREAK) {
                     // break timer
                     timerPeriod = parseInt(config.break) * 60;
-                } else if (pomoState === 'Long Break') {
+                } else if (pomodoroState === LONG_BREAK) {
                     // long break timer
                     timerPeriod = parseInt(config.longBreak) * 60;
                 }
@@ -265,9 +293,9 @@
             }
 
             function timerRingAction() {
-                console.log(pomoState, timerState);
-                let workDesc = $('#work-desc');
-                if (pomoState === 'Pomodoro') {
+                console.log(pomodoroState, timerState);
+                let workDesc = $('#actionBtn');
+                if (pomodoroState === 'Pomodoro') {
                     workDesc.text('Relax');
                     workDesc.attr('onclick', 'action("relax")');
                 } else {
@@ -288,15 +316,7 @@
                 $('#work-desc').hide();
             }
 
-            function openSettings() {
-                $('#setFocus').val(config.focus);
-                $('#setBreak').val(config.break);
-                $('#setLongBreak').val(config.longBreak);
-                $('#setDay').val(config.day);
-                $('#setCycle').val(config.cycle);
-                $('#settingsModal').modal('show');
-            }
-
+            // Pomodoro Settings
             function applySettings() {
                 let focusVal = $('#setFocus').val();
                 let breakVal = $('#setBreak').val();
@@ -315,13 +335,74 @@
                 $('#settingsModal').modal('hide');
             }
 
-            function toggleReport() {
+            // UI functions
+            function _toggleReport() {
                 let report = $('#report');
                 if (report.css('display') === 'flex') {
                     report.hide();
                 } else {
                     initChart();
                     report.show();
+                }
+            }
+
+            function _openSettings() {
+                $('#setFocus').val(config.focus);
+                $('#setBreak').val(config.break);
+                $('#setLongBreak').val(config.longBreak);
+                $('#setDay').val(config.day);
+                $('#setCycle').val(config.cycle);
+                $('#settingsModal').modal('show');
+            }
+
+            function _action(act) {
+                let nextPomodoroState = getNextPomodoroState(act, pomodoroState);
+                if (act === ACTION_START) {
+                    updateTimerState(TIMER_ON);
+                    updatePomodoroState(nextPomodoroState);
+                    startTimer();
+                } else if (act === ACTION_RESUME) {
+                    stopTimer();
+                    updateTimerState(TIMER_ON);
+                    updatePomodoroState(nextPomodoroState);
+                    startTimer();
+                } else { // ACTION_STOP
+                    updateTimerState(TIMER_OFF);
+                    updatePomodoroState(nextPomodoroState);
+                    stopTimer();
+                }
+
+            }
+
+            function getNextPomodoroState(action, pomodoroState) {
+                if (pomodoroState === POMODORO) {
+                    if (action === ACTION_START && pomodoroCount === 0) {
+                        return POMODORO;
+                    }
+                    else if (action === ACTION_START && (pomodoroCount > 0 && pomodoroCount % config.cycle === 0)) {
+                        return LONG_BREAK;
+                    } else if (action === ACTION_START) {
+                        return BREAK;
+                    } else {
+                        // ACTION_RESUME 은 올 수 없다
+                        // ACTION_STOP 일 때는 동일하다.
+                        return POMODORO;
+                    }
+                } else if (pomodoroState === BREAK) {
+                    if (action === ACTION_STOP) {
+                        return POMODORO;
+                    } else  {
+                        // ACTION_STOP 올 수 없다
+                        // ACTION_RESUME
+                        return POMODORO;
+                    }
+                } else {
+                    // LONG_BREAK
+                    if (action === ACTION_STOP) {
+                        return POMODORO;
+                    } else {
+                        return POMODORO;
+                    }
                 }
             }
 
