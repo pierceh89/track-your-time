@@ -73,16 +73,20 @@
             <div class="row justify-content-center mb-2">
                 <div class="col-12 col-md-6">
                     <div class="progress">
-                        <div class="progress-bar" id="timer-progress" role="progressboar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                        <div class="progress-bar" id="timer-progress" role="progressboar" style="width: 0;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
                     </div>
                 </div>
             </div>
             <div class="row justify-content-center">
                 <div class="col-12 col-md-6 text-center" id="control-box">
-                    <button class="btn btn-success btn-lg" onclick="_action('start')" id="actionBtn">
+                    <button class="btn btn-light btn-lg" onclick="_action('stop')" id="stopBtn" style="display: none;">
+                        stop
+                    </button>
+                    <button class="btn btn-success btn-lg" onclick="_action('start')" id="startBtn">
                         start
                     </button>
-                    <button class="btn btn-light btn-lg" id="resumeBtn" style="display: none;">
+                    <button class="btn btn-success btn-lg" onclick="_action('resume')" id="resumeBtn" style="display: none;">
+                        resume
                     </button>
                 </div>
             </div>
@@ -131,13 +135,10 @@
                 crossorigin="anonymous"></script>
         <script src="https://cdn.jsdelivr.net/npm/chart.js@2.8.0"></script>
         <script>
-            // pomodoroState
+            // timerMode
             const POMODORO = 'pomodoro';
             const BREAK = 'break';
             const LONG_BREAK = 'long break';
-            // timerState
-            const TIMER_ON = 'running';
-            const TIMER_OFF = 'stop';
             // action
             const ACTION_START = 'start';
             const ACTION_STOP = 'stop';
@@ -145,8 +146,7 @@
 
             let configJson = window.localStorage.getItem('config');
             let config;
-            let pomodoroState = POMODORO;
-            let timerState = TIMER_OFF;
+            let timerMode = POMODORO;
 
             let pomodoroCount = 0;
             let timerPeriod;
@@ -172,10 +172,10 @@
             // pomodoro 초기화
             // localStorage 에서 설정값 로드
             function init() {
-                $('#state').text(pomodoroState);
+                $('#state').text(timerMode);
                 $('#remain-time').text(`${config.focus}:00`);
                 $('#elapsed-time').text('00:00');
-
+                $('#timer-progress').css('width', '0%');
                 // TODO 오늘의 pomodoroCount 를 로딩할 때 가져와야 한다.
             }
 
@@ -201,66 +201,30 @@
                 });
             }
 
-            function updatePomodoroState(stateTo) {
-                console.log('Pomodoro state from ' + pomodoroState + ' to ' + stateTo);
-                pomodoroState = stateTo;
-            }
-
-            function updateTimerState(stateTo) {
-                console.log('Timer state from ' + timerState + ' to ' + stateTo);
-                timerState = stateTo;
-            }
-
-            function action(act) {
-                if (timerState === 'stop') {
-                    // start pomodoro
-                    $('#state-desc').text('stop');
-                    timerState = 'running';
-                    startTimer();
-                } else if (timerState === 'running') {
-                    // stop pomodoro
-                    $('#state-desc').text('start');
-                    timerState = 'stop';
-                    stopTimer();
-                } else if (timerState === 'finished' && act === 'relax') {
-                    pomoState = 'Break';
-                    // TODO add long break
-                    stopTimer();
-                    startTimer();
-                    timerState = 'running';
-                } else if (timerState === 'finished' && act === 'resume') {
-                    pomoState = 'Pomodoro';
-                    stopTimer();
-                    startTimer();
-                    timerState = 'running';
-                } else if (timerState === 'finished') {
-                    $('#state-desc').text('start');
-                    timerState = 'stop';
-                    stopTimer();
-                }
-            }
-
             function startTimer() {
                 timerElapsed = 0;
-                if (pomodoroState === POMODORO) {
+                if (timerMode === POMODORO) {
                     // pomodoro timer
                     timerPeriod = parseInt(config.focus) * 60; // to seconds
-                } else if (pomodoroState === BREAK) {
+                } else if (timerMode === BREAK) {
                     // break timer
                     timerPeriod = parseInt(config.break) * 60;
-                } else if (pomodoroState === LONG_BREAK) {
+                } else if (timerMode === LONG_BREAK) {
                     // long break timer
                     timerPeriod = parseInt(config.longBreak) * 60;
                 }
+                $('#state').text(timerMode);
 
                 timerObj = setInterval(function() {
 
                     timerElapsed += 1;
+                    const remainTime = $('#remain-time');
+                    const elapsedTime = $('#elapsed-time');
 
                     let delta = timerPeriod - timerElapsed;
 
                     if (delta < 0) {
-                        $('#remain-time').text('00:00');
+                        remainTime.text('00:00');
                     } else {
                         let remain_minutes = Math.floor(delta / 60);
                         let remain_seconds = delta - remain_minutes * 60;
@@ -268,7 +232,7 @@
                         let rm_str = remain_minutes.toString().padStart(2, '0');
                         let rs_str = remain_seconds.toString().padStart(2, '0');
 
-                        $('#remain-time').text(`${rm_str}:${rs_str}`);
+                        remainTime.text(`${rm_str}:${rs_str}`);
                     }
 
                     let elapsed_minutes = Math.floor(timerElapsed / 60);
@@ -277,14 +241,13 @@
                     let em_str = elapsed_minutes.toString().padStart(2, '0');
                     let es_str = elapsed_seconds.toString().padStart(2, '0');
 
-                    $('#elapsed-time').text(`${em_str}:${es_str}`);
+                    elapsedTime.text(`${em_str}:${es_str}`);
 
                     if (timerElapsed < timerPeriod) {
                         let elapsed_percent = timerElapsed/timerPeriod * 100;
                         $('#timer-progress').css('width', `${elapsed_percent}%`);
                     }
 
-                    // TODO browser notify when elapsed time reaches period time
                     if (timerElapsed === timerPeriod) {
                         console.log('Ring!');
                         timerRingAction();
@@ -293,27 +256,40 @@
             }
 
             function timerRingAction() {
-                console.log(pomodoroState, timerState);
-                let workDesc = $('#actionBtn');
-                if (pomodoroState === 'Pomodoro') {
-                    workDesc.text('Relax');
-                    workDesc.attr('onclick', 'action("relax")');
+                // TODO browser notify when elapsed time reaches period time
+                console.log(timerMode);
+                const startBtn = $('#startBtn');
+                if (timerMode === POMODORO) {
+                    if (pomodoroCount > 0 && pomodoroCount % config.cycle === 0) {
+                        timerMode = LONG_BREAK;
+                    } else {
+                        timerMode = BREAK;
+                    }
+                    // update pomodoroCount
+                    pomodoroCount += 1;
+                    // update UI
+                    startBtn.show();
+                    startBtn.text('relax');
                 } else {
-                    workDesc.text('Resume');
-                    workDesc.attr('onclick', 'action("resume")');
+                    // break or long break
+                    timerMode = POMODORO;
+                    // update UI
+                    startBtn.hide();
+                    $('#resumeBtn').show();
                 }
-                timerState = 'finished';
-                workDesc.show();
+            }
+
+            function forceResumeAction() {
+                timerMode = POMODORO;
             }
 
             function stopTimer() {
-                clearInterval(timerObj);
-                if (pomoState === 'Pomodoro') {
-                    $('#elapsed-time').text('00:00');
-                    $('#remain-time').text(`${config.focus}:00`);
-                    $('#timer-progress').css('width', '0%');
+                if (timerObj !== null) {
+                    clearInterval(timerObj);
+                    timerMode = POMODORO;
+                    init();
+                    $('#startBtn').text('start');
                 }
-                $('#work-desc').hide();
             }
 
             // Pomodoro Settings
@@ -356,56 +332,27 @@
             }
 
             function _action(act) {
-                let nextPomodoroState = getNextPomodoroState(act, pomodoroState);
                 if (act === ACTION_START) {
-                    updateTimerState(TIMER_ON);
-                    updatePomodoroState(nextPomodoroState);
+                    clearInterval(timerObj);
                     startTimer();
+                    $('#stopBtn').show();
+                    $('#startBtn').hide();
+                    if (timerMode !== POMODORO) {
+                        $('#resumeBtn').show();
+                    }
                 } else if (act === ACTION_RESUME) {
-                    stopTimer();
-                    updateTimerState(TIMER_ON);
-                    updatePomodoroState(nextPomodoroState);
+                    clearInterval(timerObj);
+                    forceResumeAction();
                     startTimer();
+                    $('#startBtn').hide();
+                    $('#resumeBtn').hide();
                 } else { // ACTION_STOP
-                    updateTimerState(TIMER_OFF);
-                    updatePomodoroState(nextPomodoroState);
                     stopTimer();
-                }
-
-            }
-
-            function getNextPomodoroState(action, pomodoroState) {
-                if (pomodoroState === POMODORO) {
-                    if (action === ACTION_START && pomodoroCount === 0) {
-                        return POMODORO;
-                    }
-                    else if (action === ACTION_START && (pomodoroCount > 0 && pomodoroCount % config.cycle === 0)) {
-                        return LONG_BREAK;
-                    } else if (action === ACTION_START) {
-                        return BREAK;
-                    } else {
-                        // ACTION_RESUME 은 올 수 없다
-                        // ACTION_STOP 일 때는 동일하다.
-                        return POMODORO;
-                    }
-                } else if (pomodoroState === BREAK) {
-                    if (action === ACTION_STOP) {
-                        return POMODORO;
-                    } else  {
-                        // ACTION_STOP 올 수 없다
-                        // ACTION_RESUME
-                        return POMODORO;
-                    }
-                } else {
-                    // LONG_BREAK
-                    if (action === ACTION_STOP) {
-                        return POMODORO;
-                    } else {
-                        return POMODORO;
-                    }
+                    $('#stopBtn').hide();
+                    $('#resumeBtn').hide();
+                    $('#startBtn').show();
                 }
             }
-
         </script>
     </body>
 </html>
