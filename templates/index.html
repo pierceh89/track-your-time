@@ -5,6 +5,9 @@
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 
+        <meta property="og:title" content="Pomodoro"/>
+        <meta property="og:description" content="Track your productivity"/>
+        <meta property="og:image" content="{{ url_for('static', filename='sharp_timelapse_white_48dp.png') }}"/>
         <title>Track Your Time</title>
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.5.3/dist/css/bootstrap.min.css"
               integrity="sha384-TX8t27EcRE3e/ihU7zmQxVncDAy5uIKz4rEkgIXeMed4M0jlfIDPvg6uqKI2xXr2"
@@ -14,6 +17,7 @@
             * {
                 font-family: 'Jua', sans-serif;
             }
+
         </style>
     </head>
     <body>
@@ -73,7 +77,8 @@
             <div class="row justify-content-center mb-2">
                 <div class="col-12 col-md-6">
                     <div class="progress">
-                        <div class="progress-bar" id="timer-progress" role="progressboar" style="width: 0;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                        <div class="progress-bar" id="timer-progress" role="progressboar" style="width: 0;"
+                             aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
                     </div>
                 </div>
             </div>
@@ -85,7 +90,8 @@
                     <button class="btn btn-success btn-lg" onclick="_action('start')" id="startBtn">
                         start
                     </button>
-                    <button class="btn btn-success btn-lg" onclick="_action('resume')" id="resumeBtn" style="display: none;">
+                    <button class="btn btn-success btn-lg" onclick="_action('resume')" id="resumeBtn"
+                            style="display: none;">
                         resume
                     </button>
                 </div>
@@ -103,23 +109,23 @@
                     <div class="modal-body">
                         <div class="form-group">
                             <label for="setFocus">Focus</label>
-                            <input type="number" class="form-control" id="setFocus" />
+                            <input type="number" class="form-control" id="setFocus"/>
                         </div>
                         <div class="form-group">
                             <label for="setBreak">Break</label>
-                            <input type="number" class="form-control" id="setBreak" />
+                            <input type="number" class="form-control" id="setBreak"/>
                         </div>
                         <div class="form-group">
                             <label for="setLongBreak">LongBreak</label>
-                            <input type="number" class="form-control" id="setLongBreak" />
+                            <input type="number" class="form-control" id="setLongBreak"/>
                         </div>
                         <div class="form-group">
                             <label for="setDay">Goal per Day</label>
-                            <input type="number" class="form-control" id="setDay" />
+                            <input type="number" class="form-control" id="setDay"/>
                         </div>
                         <div class="form-group">
                             <label for="setCycle">Cycle</label>
-                            <input type="number" class="form-control" id="setCycle" />
+                            <input type="number" class="form-control" id="setCycle"/>
                         </div>
                     </div>
                     <div class="modal-footer">
@@ -134,225 +140,10 @@
                 integrity="sha384-ho+j7jyWK8fNQe+A12Hb8AhRq26LrZ/JpcUGGOn+Y7RsweNrtN/tE3MoK7ZeZDyx"
                 crossorigin="anonymous"></script>
         <script src="https://cdn.jsdelivr.net/npm/chart.js@2.8.0"></script>
+        <script src="{{url_for('static', filename='js/timer.js')}}"></script>
+        <script src="{{url_for('static', filename='js/ui.js')}}"></script>
+        <script src="{{url_for('static', filename='js/stat.js')}}"></script>
         <script>
-            // timerMode
-            const POMODORO = 'pomodoro';
-            const BREAK = 'break';
-            const LONG_BREAK = 'long break';
-            // action
-            const ACTION_START = 'start';
-            const ACTION_STOP = 'stop';
-            const ACTION_RESUME = 'resume';
-
-            let configJson = window.localStorage.getItem('config');
-            let config;
-            let timerMode = POMODORO;
-
-            let pomodoroCount = 0;
-            let timerPeriod;
-            let timerElapsed;
-            let timerObj;
-            if (configJson == null) {
-                config = {
-                    'focus': 25,
-                    'break': 5,
-                    'longBreak': 15,
-                    'day': 10,
-                    'cycle': 4
-                };
-                window.localStorage.setItem('config', JSON.stringify(config));
-            } else {
-                config = JSON.parse(configJson);
-            }
-
-            $(document).ready(function () {
-                init();
-            });
-
-            // pomodoro 초기화
-            // localStorage 에서 설정값 로드
-            function init() {
-                $('#state').text(timerMode);
-                $('#remain-time').text(`${config.focus}:00`);
-                $('#elapsed-time').text('00:00');
-                $('#timer-progress').css('width', '0%');
-                // TODO 오늘의 pomodoroCount 를 로딩할 때 가져와야 한다.
-            }
-
-            function initChart() {
-                let ctx = document.getElementById('myChart').getContext('2d');
-                let chart = new Chart(ctx, {
-                    // The type of chart we want to create
-                    type: 'line',
-
-                    // The data for our dataset
-                    data: {
-                        labels: ['January', 'February', 'March', 'April', 'May', 'June', 'July'],
-                        datasets: [{
-                            label: 'My First dataset',
-                            backgroundColor: 'rgb(255, 99, 132)',
-                            borderColor: 'rgb(255, 99, 132)',
-                            data: [0, 10, 5, 2, 20, 30, 45]
-                        }]
-                    },
-
-                    // Configuration options go here
-                    options: {}
-                });
-            }
-
-            function startTimer() {
-                timerElapsed = 0;
-                if (timerMode === POMODORO) {
-                    // pomodoro timer
-                    timerPeriod = parseInt(config.focus) * 60; // to seconds
-                } else if (timerMode === BREAK) {
-                    // break timer
-                    timerPeriod = parseInt(config.break) * 60;
-                } else if (timerMode === LONG_BREAK) {
-                    // long break timer
-                    timerPeriod = parseInt(config.longBreak) * 60;
-                }
-                $('#state').text(timerMode);
-
-                timerObj = setInterval(function() {
-
-                    timerElapsed += 1;
-                    const remainTime = $('#remain-time');
-                    const elapsedTime = $('#elapsed-time');
-
-                    let delta = timerPeriod - timerElapsed;
-
-                    if (delta < 0) {
-                        remainTime.text('00:00');
-                    } else {
-                        let remain_minutes = Math.floor(delta / 60);
-                        let remain_seconds = delta - remain_minutes * 60;
-
-                        let rm_str = remain_minutes.toString().padStart(2, '0');
-                        let rs_str = remain_seconds.toString().padStart(2, '0');
-
-                        remainTime.text(`${rm_str}:${rs_str}`);
-                    }
-
-                    let elapsed_minutes = Math.floor(timerElapsed / 60);
-                    let elapsed_seconds = timerElapsed - elapsed_minutes * 60;
-
-                    let em_str = elapsed_minutes.toString().padStart(2, '0');
-                    let es_str = elapsed_seconds.toString().padStart(2, '0');
-
-                    elapsedTime.text(`${em_str}:${es_str}`);
-
-                    if (timerElapsed < timerPeriod) {
-                        let elapsed_percent = timerElapsed/timerPeriod * 100;
-                        $('#timer-progress').css('width', `${elapsed_percent}%`);
-                    }
-
-                    if (timerElapsed === timerPeriod) {
-                        console.log('Ring!');
-                        timerRingAction();
-                    }
-                }, 1000);
-            }
-
-            function timerRingAction() {
-                // TODO browser notify when elapsed time reaches period time
-                console.log(timerMode);
-                const startBtn = $('#startBtn');
-                if (timerMode === POMODORO) {
-                    if (pomodoroCount > 0 && pomodoroCount % config.cycle === 0) {
-                        timerMode = LONG_BREAK;
-                    } else {
-                        timerMode = BREAK;
-                    }
-                    // update pomodoroCount
-                    pomodoroCount += 1;
-                    // update UI
-                    startBtn.show();
-                    startBtn.text('relax');
-                } else {
-                    // break or long break
-                    timerMode = POMODORO;
-                    // update UI
-                    startBtn.hide();
-                    $('#resumeBtn').show();
-                }
-            }
-
-            function forceResumeAction() {
-                timerMode = POMODORO;
-            }
-
-            function stopTimer() {
-                if (timerObj !== null) {
-                    clearInterval(timerObj);
-                    timerMode = POMODORO;
-                    init();
-                    $('#startBtn').text('start');
-                }
-            }
-
-            // Pomodoro Settings
-            function applySettings() {
-                let focusVal = $('#setFocus').val();
-                let breakVal = $('#setBreak').val();
-                let longBreakVal = $('#setLongBreak').val();
-                let dayVal = $('#setDay').val();
-                let cycleVal = $('#setCycle').val();
-                config = {
-                    'focus': focusVal,
-                    'break': breakVal,
-                    'longBreak': longBreakVal,
-                    'day': dayVal,
-                    'cycle': cycleVal
-                };
-                window.localStorage.setItem('config', JSON.stringify(config));
-                init();
-                $('#settingsModal').modal('hide');
-            }
-
-            // UI functions
-            function _toggleReport() {
-                let report = $('#report');
-                if (report.css('display') === 'flex') {
-                    report.hide();
-                } else {
-                    initChart();
-                    report.show();
-                }
-            }
-
-            function _openSettings() {
-                $('#setFocus').val(config.focus);
-                $('#setBreak').val(config.break);
-                $('#setLongBreak').val(config.longBreak);
-                $('#setDay').val(config.day);
-                $('#setCycle').val(config.cycle);
-                $('#settingsModal').modal('show');
-            }
-
-            function _action(act) {
-                if (act === ACTION_START) {
-                    clearInterval(timerObj);
-                    startTimer();
-                    $('#stopBtn').show();
-                    $('#startBtn').hide();
-                    if (timerMode !== POMODORO) {
-                        $('#resumeBtn').show();
-                    }
-                } else if (act === ACTION_RESUME) {
-                    clearInterval(timerObj);
-                    forceResumeAction();
-                    startTimer();
-                    $('#startBtn').hide();
-                    $('#resumeBtn').hide();
-                } else { // ACTION_STOP
-                    stopTimer();
-                    $('#stopBtn').hide();
-                    $('#resumeBtn').hide();
-                    $('#startBtn').show();
-                }
-            }
         </script>
     </body>
 </html>
