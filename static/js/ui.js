@@ -4,7 +4,7 @@ function _toggleReport() {
     if (report.css('display') === 'flex') {
         report.hide();
     } else {
-        initChart();
+        initChart(CHART_WEEK);
         report.show();
     }
 }

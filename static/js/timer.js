@@ -1,3 +1,28 @@
+// chart
+const CHART_WEEK = 'week';
+const CHART_MONTH = 'month';
+const CHART_YEAR = 'year';
+let chartMode = CHART_WEEK;
+let chartMap = {
+    'week': {
+        labels: [],
+        pomoData: [],
+        breakData: [],
+        rawData: []
+    },
+    'month': {
+        labels: [],
+        pomoData: [],
+        breakData: [],
+        rawData: []
+    },
+    'year': {
+        labels: [],
+        pomoData: [],
+        breakData: [],
+        rawData: []
+    }
+};
 // timerMode
 const POMODORO = 'pomodoro';
 const BREAK = 'break';
@@ -130,7 +155,14 @@ function init() {
     $('#remain-time').text(`${config.focus}:00`);
     $('#elapsed-time').text('00:00');
     $('#timer-progress').css('width', '0%');
-    // TODO 오늘의 pomodoroCount 를 로딩할 때 가져와야 한다.
+    let dateStr = toDateString(new Date());
+    $.ajax({
+        url: '/api/timer/count?date=' + dateStr,
+        type: 'GET',
+        success: function(response) {
+            pomodoroCount = response['count'];
+        }
+    });
     checkNotificationPromise();
 }
 
@@ -177,19 +209,33 @@ function stopTimer(act) {
 
 function updateBehavior(start, end, elapsed, mode) {
     if (elapsed > timerPeriod) {
-        let behavior = {
+        let timePeriod = {
             'start': toDateTimeString(start),
             'end': toDateTimeString(end),
             'elapsed': elapsed,
             'timerMode': mode
-        }
-        console.log(behavior);
+        };
+        // console.log(behavior);
+        $.ajax({
+            url: '/api/timer',
+            type: 'POST',
+            data: timePeriod,
+            success: function(response) {
+                if (response['result'] === 'success') {
+                    pomodoroList.push(timePeriod);
+                }
+            }
+        })
     }
 }
 
+function toDateString(date) {
+    return `${date.getFullYear()}-${date.getMonth()+1}-${date.getDate()}`
+}
+
 function toDateTimeString(date) {
-    let dateStr = `${date.getFullYear()}-${date.getMonth()+1}-${date.getDate()}`
-    let timeStr = `${date.getHours()}:${date.getMinutes()}:${date.getSeconds()}`
+    let dateStr = `${date.getFullYear()}-${date.getMonth()+1}-${date.getDate()}`;
+    let timeStr = `${date.getHours()}:${date.getMinutes()}:${date.getSeconds()}`;
 
     return dateStr + ' ' + timeStr
 }
