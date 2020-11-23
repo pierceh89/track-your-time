@@ -157,7 +157,3 @@ def transform_time_period(time_period_list):
             'timerMode': time_period['timerMode']
         })
     return ret
-
-
-if __name__ == '__main__':
-    app.run('0.0.0.0', port=5000, debug=True)
